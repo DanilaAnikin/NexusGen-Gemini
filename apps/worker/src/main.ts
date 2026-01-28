@@ -2,7 +2,28 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import Docker from 'dockerode';
 import { AppModule } from './app.module';
+
+async function checkDockerAccess(): Promise<boolean> {
+  const docker = new Docker();
+  try {
+    await docker.listImages();
+    console.log('✅ Docker daemon is accessible');
+    return true;
+  } catch (error) {
+    console.error('\n' + '='.repeat(60));
+    console.error('CRITICAL: Worker cannot access Docker Daemon.');
+    console.error('Please ensure Docker is running and accessible.');
+    console.error('');
+    console.error('On Linux: Make sure your user is in the docker group');
+    console.error('  sudo usermod -aG docker $USER');
+    console.error('');
+    console.error('On macOS/Windows: Make sure Docker Desktop is running');
+    console.error('='.repeat(60) + '\n');
+    return false;
+  }
+}
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -10,6 +31,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
+
+  // Check Docker daemon access early in bootstrap
+  const dockerAccessible = await checkDockerAccess();
+  if (!dockerAccessible) {
+    logger.warn('Docker daemon is not accessible - some features may not work');
+  }
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3001);
