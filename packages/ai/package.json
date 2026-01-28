@@ -1,0 +1,54 @@
+{
+  "name": "@nexusgen/ai",
+  "version": "0.1.0",
+  "description": "NexusGen AI Platform - AI Provider Integrations",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./openai": {
+      "types": "./dist/openai.d.ts",
+      "import": "./dist/openai.mjs",
+      "require": "./dist/openai.js"
+    },
+    "./anthropic": {
+      "types": "./dist/anthropic.d.ts",
+      "import": "./dist/anthropic.mjs",
+      "require": "./dist/anthropic.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist node_modules .turbo"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^1.0.7",
+    "@ai-sdk/google": "^1.0.14",
+    "@ai-sdk/openai": "^1.0.13",
+    "@anthropic-ai/sdk": "^0.39.0",
+    "ai": "^4.0.30",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT"
+}

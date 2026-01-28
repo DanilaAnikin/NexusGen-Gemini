@@ -1,0 +1,915 @@
+// NexusGen AI Platform - Prisma Schema
+// This is the complete database schema for the NexusGen platform
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+  UNLISTED
+}
+
+enum VersionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum DeploymentStatus {
+  PENDING
+  BUILDING
+  DEPLOYING
+  DEPLOYED
+  FAILED
+  CANCELLED
+  ROLLED_BACK
+}
+
+enum DeploymentEnvironment {
+  DEVELOPMENT
+  STAGING
+  PREVIEW
+  PRODUCTION
+}
+
+enum AssetType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  FONT
+  CODE
+  OTHER
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+enum AIMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+  FUNCTION
+}
+
+enum SubscriptionTier {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAST_DUE
+  UNPAID
+  TRIALING
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum NotificationType {
+  PROJECT_UPDATE
+  DEPLOYMENT_STATUS
+  TEAM_INVITE
+  COMMENT_MENTION
+  SYSTEM_ALERT
+  BILLING_ALERT
+}
+
+// ============================================================================
+// AUTH MODELS
+// ============================================================================
+
+model User {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  passwordHash  String?
+  bio           String?
+  company       String?
+  location      String?
+  website       String?
+  preferences   Json      @default("{}")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  // Relations
+  accounts          Account[]
+  sessions          Session[]
+  projects          Project[]
+  projectVersions   ProjectVersion[]
+  deployments       Deployment[]
+  aiConversations   AIConversation[]
+  assets            Asset[]
+  comments          Comment[]
+  notifications     Notification[]
+  teamMemberships   TeamMember[]
+  ownedTeams        Team[]             @relation("TeamOwner")
+  apiKeys           ApiKey[]
+  subscription      Subscription?
+  usageRecords      UsageRecord[]
+
+  @@index([email])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionToken String   @unique
+  userId       String   @db.Uuid
+  expires      DateTime
+  userAgent    String?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expires])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  token     String   @unique
+  email     String
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([expires])
+  @@map("password_reset_tokens")
+}
+
+// ============================================================================
+// PROJECT MODELS
+// ============================================================================
+
+model Project {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  slug         String
+  description  String?
+  status       ProjectStatus @default(DRAFT)
+  visibility   Visibility    @default(PRIVATE)
+  framework    String?       // e.g., "nextjs", "react", "vue"
+  template     String?       // template used to create project
+  settings     Json          @default("{}")
+  metadata     Json          @default("{}")
+  thumbnail    String?
+
+  // Ownership
+  userId       String        @db.Uuid
+  teamId       String?       @db.Uuid
+
+  // Git integration
+  gitRepo      String?
+  gitBranch    String?       @default("main")
+  gitProvider  String?       // "github", "gitlab", "bitbucket"
+
+  // Timestamps
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime?
+  lastActiveAt DateTime      @default(now())
+
+  // Relations
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team             Team?              @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  versions         ProjectVersion[]
+  assets           Asset[]
+  deployments      Deployment[]
+  aiConversations  AIConversation[]
+  comments         Comment[]
+  collaborators    ProjectCollaborator[]
+  domains          Domain[]
+  envVariables     EnvVariable[]
+
+  @@unique([userId, slug])
+  @@unique([teamId, slug])
+  @@index([userId])
+  @@index([teamId])
+  @@index([status])
+  @@index([visibility])
+  @@index([createdAt])
+  @@index([lastActiveAt])
+  @@map("projects")
+}
+
+model ProjectVersion {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId    String        @db.Uuid
+  version      String        // Semantic version: "1.0.0"
+  name         String?       // Optional version name: "Initial Release"
+  description  String?
+  status       VersionStatus @default(DRAFT)
+
+  // Content
+  files        Json          @default("{}") // File tree structure
+  components   Json          @default("[]") // Component definitions
+  pages        Json          @default("[]") // Page definitions
+  styles       Json          @default("{}") // Style configurations
+  config       Json          @default("{}") // Build/runtime config
+
+  // Version metadata
+  changelog    String?       @db.Text
+  isLatest     Boolean       @default(false)
+  isCurrent    Boolean       @default(false) // Currently active version
+
+  // Attribution
+  createdById  String        @db.Uuid
+
+  // Timestamps
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  publishedAt  DateTime?
+
+  // Relations
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy    User          @relation(fields: [createdById], references: [id])
+  deployments  Deployment[]
+  snapshots    VersionSnapshot[]
+
+  @@unique([projectId, version])
+  @@index([projectId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("project_versions")
+}
+
+model VersionSnapshot {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  versionId   String   @db.Uuid
+  snapshot    Json     // Complete state snapshot
+  reason      String?  // Why snapshot was created
+  createdAt   DateTime @default(now())
+
+  version     ProjectVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId])
+  @@index([createdAt])
+  @@map("version_snapshots")
+}
+
+model ProjectCollaborator {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String   @db.Uuid
+  email       String
+  role        TeamRole @default(VIEWER)
+  inviteToken String?  @unique
+  status      InviteStatus @default(PENDING)
+  invitedAt   DateTime @default(now())
+  acceptedAt  DateTime?
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, email])
+  @@index([projectId])
+  @@index([email])
+  @@map("project_collaborators")
+}
+
+// ============================================================================
+// ASSET MODELS
+// ============================================================================
+
+model Asset {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String    @db.Uuid
+  userId      String    @db.Uuid
+
+  name        String
+  filename    String
+  mimeType    String
+  size        Int       // Size in bytes
+  type        AssetType
+
+  // Storage
+  url         String
+  storageKey  String    // S3/storage key
+  cdnUrl      String?   // CDN URL if available
+
+  // Metadata
+  width       Int?      // For images/videos
+  height      Int?      // For images/videos
+  duration    Int?      // For audio/video in seconds
+  metadata    Json      @default("{}")
+
+  // Organization
+  folder      String?   @default("/")
+  tags        String[]
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([type])
+  @@index([folder])
+  @@index([createdAt])
+  @@map("assets")
+}
+
+// ============================================================================
+// DEPLOYMENT MODELS
+// ============================================================================
+
+model Deployment {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId     String              @db.Uuid
+  versionId     String?             @db.Uuid
+  userId        String              @db.Uuid
+
+  status        DeploymentStatus    @default(PENDING)
+  environment   DeploymentEnvironment @default(PREVIEW)
+
+  // Deployment info
+  url           String?             // Deployed URL
+  previewUrl    String?             // Preview URL
+  alias         String?             // Custom alias
+
+  // Build info
+  buildCommand  String?
+  outputDir     String?
+  nodeVersion   String?             @default("18")
+
+  // Git info (for git-based deployments)
+  gitCommit     String?
+  gitBranch     String?
+  gitMessage    String?
+
+  // Timing
+  startedAt     DateTime?
+  completedAt   DateTime?
+  duration      Int?                // Duration in milliseconds
+
+  // Error handling
+  errorMessage  String?
+  errorCode     String?
+
+  // Metadata
+  metadata      Json                @default("{}")
+
+  // Timestamps
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  // Relations
+  project       Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version       ProjectVersion?     @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  user          User                @relation(fields: [userId], references: [id])
+  buildLogs     BuildLog[]
+
+  @@index([projectId])
+  @@index([versionId])
+  @@index([userId])
+  @@index([status])
+  @@index([environment])
+  @@index([createdAt])
+  @@map("deployments")
+}
+
+model BuildLog {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deploymentId String    @db.Uuid
+
+  timestamp    DateTime  @default(now())
+  level        LogLevel  @default(INFO)
+  message      String    @db.Text
+  source       String?   // e.g., "build", "deploy", "runtime"
+  metadata     Json      @default("{}")
+
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  @@index([deploymentId])
+  @@index([timestamp])
+  @@index([level])
+  @@map("build_logs")
+}
+
+model Domain {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String   @db.Uuid
+  domain      String   @unique
+  isVerified  Boolean  @default(false)
+  isPrimary   Boolean  @default(false)
+  sslEnabled  Boolean  @default(true)
+
+  // DNS verification
+  txtRecord   String?
+  cnameRecord String?
+  verifiedAt  DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([domain])
+  @@map("domains")
+}
+
+model EnvVariable {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String   @db.Uuid
+  key         String
+  value       String   @db.Text // Encrypted in application layer
+  environment DeploymentEnvironment[]
+  isSecret    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, key])
+  @@index([projectId])
+  @@map("env_variables")
+}
+
+// ============================================================================
+// AI MODELS
+// ============================================================================
+
+model AIConversation {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @db.Uuid
+  projectId   String?   @db.Uuid
+
+  title       String?
+  model       String    @default("gpt-4")
+  context     Json      @default("{}") // Conversation context
+  metadata    Json      @default("{}")
+
+  // Token usage
+  totalTokens Int       @default(0)
+
+  // Status
+  isActive    Boolean   @default(true)
+  isPinned    Boolean   @default(false)
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastMessageAt DateTime?
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  messages    AIMessage[]
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([createdAt])
+  @@index([lastMessageAt])
+  @@map("ai_conversations")
+}
+
+model AIMessage {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId  String        @db.Uuid
+
+  role            AIMessageRole
+  content         String        @db.Text
+
+  // Function calling
+  functionName    String?
+  functionArgs    Json?
+  functionResult  Json?
+
+  // Token usage for this message
+  promptTokens    Int?
+  completionTokens Int?
+
+  // Code generation
+  generatedCode   Json?         // Generated code snippets
+  codeLanguage    String?
+
+  // Metadata
+  metadata        Json          @default("{}")
+
+  // Timestamps
+  createdAt       DateTime      @default(now())
+
+  // Parent message for threading
+  parentId        String?       @db.Uuid
+
+  // Relations
+  conversation    AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  parent          AIMessage?     @relation("MessageThread", fields: [parentId], references: [id])
+  replies         AIMessage[]    @relation("MessageThread")
+
+  @@index([conversationId])
+  @@index([createdAt])
+  @@index([role])
+  @@map("ai_messages")
+}
+
+// ============================================================================
+// TEAM MODELS
+// ============================================================================
+
+model Team {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  slug        String   @unique
+  description String?
+  image       String?
+
+  ownerId     String   @db.Uuid
+
+  settings    Json     @default("{}")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  owner       User     @relation("TeamOwner", fields: [ownerId], references: [id])
+  members     TeamMember[]
+  projects    Project[]
+  invites     TeamInvite[]
+
+  @@index([ownerId])
+  @@index([slug])
+  @@map("teams")
+}
+
+model TeamMember {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teamId    String   @db.Uuid
+  userId    String   @db.Uuid
+  role      TeamRole @default(MEMBER)
+
+  joinedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+model TeamInvite {
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teamId    String       @db.Uuid
+  email     String
+  role      TeamRole     @default(MEMBER)
+  token     String       @unique
+  status    InviteStatus @default(PENDING)
+
+  expiresAt DateTime
+  createdAt DateTime     @default(now())
+  acceptedAt DateTime?
+
+  team      Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, email])
+  @@index([teamId])
+  @@index([email])
+  @@index([token])
+  @@map("team_invites")
+}
+
+// ============================================================================
+// COMMENTS & COLLABORATION
+// ============================================================================
+
+model Comment {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String   @db.Uuid
+  userId      String   @db.Uuid
+
+  content     String   @db.Text
+
+  // Position (for visual comments)
+  pageId      String?  // Page/component ID
+  x           Float?
+  y           Float?
+  selector    String?  // CSS selector
+
+  // Threading
+  parentId    String?  @db.Uuid
+
+  // Status
+  isResolved  Boolean  @default(false)
+  resolvedAt  DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+  parent      Comment? @relation("CommentThread", fields: [parentId], references: [id])
+  replies     Comment[] @relation("CommentThread")
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([parentId])
+  @@index([createdAt])
+  @@map("comments")
+}
+
+// ============================================================================
+// NOTIFICATION MODELS
+// ============================================================================
+
+model Notification {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String           @db.Uuid
+  type        NotificationType
+  title       String
+  message     String
+  link        String?
+
+  isRead      Boolean          @default(false)
+  readAt      DateTime?
+
+  metadata    Json             @default("{}")
+
+  createdAt   DateTime         @default(now())
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ============================================================================
+// BILLING & SUBSCRIPTION MODELS
+// ============================================================================
+
+model Subscription {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String             @unique @db.Uuid
+
+  tier              SubscriptionTier   @default(FREE)
+  status            SubscriptionStatus @default(ACTIVE)
+
+  // Stripe integration
+  stripeCustomerId      String?        @unique
+  stripeSubscriptionId  String?        @unique
+  stripePriceId         String?
+
+  // Billing cycle
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean        @default(false)
+
+  // Trial
+  trialStart            DateTime?
+  trialEnd              DateTime?
+
+  // Limits based on tier
+  projectLimit          Int            @default(3)
+  storageLimit          BigInt         @default(1073741824) // 1GB in bytes
+  deploymentLimit       Int            @default(100)
+  aiTokenLimit          Int            @default(10000)
+
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoices              Invoice[]
+
+  @@index([stripeCustomerId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  subscriptionId  String   @db.Uuid
+
+  stripeInvoiceId String?  @unique
+  amount          Int      // Amount in cents
+  currency        String   @default("usd")
+  status          String   // paid, open, void, uncollectible
+
+  invoiceUrl      String?
+  pdfUrl          String?
+
+  periodStart     DateTime
+  periodEnd       DateTime
+  paidAt          DateTime?
+
+  createdAt       DateTime @default(now())
+
+  subscription    Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([createdAt])
+  @@map("invoices")
+}
+
+model UsageRecord {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String   @db.Uuid
+
+  type        String   // "ai_tokens", "storage", "deployments", "bandwidth"
+  quantity    BigInt
+
+  // Period
+  periodStart DateTime
+  periodEnd   DateTime
+
+  metadata    Json     @default("{}")
+
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([periodStart, periodEnd])
+  @@map("usage_records")
+}
+
+// ============================================================================
+// API & INTEGRATION MODELS
+// ============================================================================
+
+model ApiKey {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @db.Uuid
+
+  name        String
+  keyHash     String    @unique // Hashed API key
+  keyPrefix   String    // First 8 chars for identification
+
+  scopes      String[]  // ["projects:read", "projects:write", etc.]
+
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([keyHash])
+  @@index([keyPrefix])
+  @@map("api_keys")
+}
+
+model Webhook {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String   @db.Uuid
+
+  url         String
+  secret      String   // For signature verification
+  events      String[] // Events to trigger webhook
+
+  isActive    Boolean  @default(true)
+
+  lastTriggeredAt DateTime?
+  lastStatus      Int?     // HTTP status of last request
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@map("webhooks")
+}
+
+// ============================================================================
+// ANALYTICS & AUDIT MODELS
+// ============================================================================
+
+model AuditLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  userId      String?  @db.Uuid
+  entityType  String   // "project", "deployment", "user", etc.
+  entityId    String
+  action      String   // "create", "update", "delete", etc.
+
+  changes     Json?    // Before/after values
+  metadata    Json     @default("{}")
+
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Analytics {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String   @db.Uuid
+
+  // Time bucket
+  timestamp   DateTime
+  granularity String   // "minute", "hour", "day"
+
+  // Metrics
+  pageViews   Int      @default(0)
+  visitors    Int      @default(0)
+  bandwidth   BigInt   @default(0)
+
+  // Breakdown
+  paths       Json     @default("{}") // Page path -> count
+  referrers   Json     @default("{}") // Referrer -> count
+  countries   Json     @default("{}") // Country -> count
+  devices     Json     @default("{}") // Device type -> count
+  browsers    Json     @default("{}") // Browser -> count
+
+  createdAt   DateTime @default(now())
+
+  @@unique([projectId, timestamp, granularity])
+  @@index([projectId])
+  @@index([timestamp])
+  @@map("analytics")
+}

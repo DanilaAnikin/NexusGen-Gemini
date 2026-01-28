@@ -1,0 +1,76 @@
+{
+  "name": "@nexusgen/utils",
+  "version": "0.1.0",
+  "description": "NexusGen AI Platform - Shared Utilities",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./format": {
+      "types": "./dist/format.d.ts",
+      "import": "./dist/format.mjs",
+      "require": "./dist/format.js"
+    },
+    "./validation": {
+      "types": "./dist/validation.d.ts",
+      "import": "./dist/validation.mjs",
+      "require": "./dist/validation.js"
+    },
+    "./crypto": {
+      "types": "./dist/crypto.d.ts",
+      "import": "./dist/crypto.mjs",
+      "require": "./dist/crypto.js"
+    },
+    "./logger": {
+      "types": "./dist/logger.d.ts",
+      "import": "./dist/logger.mjs",
+      "require": "./dist/logger.js"
+    },
+    "./storage": {
+      "types": "./dist/storage.d.ts",
+      "import": "./dist/storage.mjs",
+      "require": "./dist/storage.js"
+    },
+    "./port-manager": {
+      "types": "./dist/port-manager.d.ts",
+      "import": "./dist/port-manager.mjs",
+      "require": "./dist/port-manager.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts src/format.ts src/validation.ts src/crypto.ts src/logger.ts src/storage.ts src/port-manager.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts src/format.ts src/validation.ts src/crypto.ts src/logger.ts src/storage.ts src/port-manager.ts --format cjs,esm --dts --watch",
+    "lint": "eslint src --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist node_modules .turbo"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.975.0",
+    "@aws-sdk/s3-request-presigner": "^3.975.0",
+    "date-fns": "^4.1.0",
+    "lodash-es": "^4.17.21",
+    "nanoid": "^5.0.9",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/lodash-es": "^4.17.12",
+    "@types/node": "^20.10.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT"
+}
