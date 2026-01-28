@@ -34,8 +34,8 @@ export class CoderAgent {
     this.maxRetries = options.maxRetries ?? 3;
 
     this.modelConfig = {
-      provider: 'anthropic',
-      model: 'claude-3-5-sonnet-latest',
+      provider: 'openai',
+      model: 'gpt-4o',
       temperature: 0.2,
       maxTokens: 8192,
       ...options.modelConfig,

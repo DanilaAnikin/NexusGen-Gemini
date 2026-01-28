@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@repo/database';
+import { prisma } from '@nexusgen/database';
 import { getCurrentUserId } from '@/lib/auth';
 import { addFullAppGenerationJob } from '@/lib/queue';
 import { z } from 'zod';
@@ -53,10 +53,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = createProjectSchema.parse(body);
 
+    // Generate a URL-friendly slug from the project name
+    const slug = validated.name
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+
     // Create project in database
     const project = await prisma.project.create({
       data: {
         name: validated.name,
+        slug,
         description: validated.description,
         userId,
         status: 'DRAFT',
@@ -115,7 +122,7 @@ export async function POST(request: NextRequest) {
  * - 401: Unauthorized
  * - 500: Internal server error
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Authenticate user
     const userId = await getCurrentUserId();

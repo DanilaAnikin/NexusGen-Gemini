@@ -72,6 +72,11 @@ export const AVAILABLE_MODELS = {
 } as const;
 
 /**
+ * The default AI provider used when no provider is explicitly configured
+ */
+export const DEFAULT_PROVIDER: AIProvider = 'openai';
+
+/**
  * Default model configurations
  */
 export const DEFAULT_MODEL_CONFIGS: Record<AIProvider, AIModelConfig> = {
@@ -94,3 +99,8 @@ export const DEFAULT_MODEL_CONFIGS: Record<AIProvider, AIModelConfig> = {
     maxTokens: 4096,
   },
 };
+
+/**
+ * The default model config (convenience alias for DEFAULT_MODEL_CONFIGS[DEFAULT_PROVIDER])
+ */
+export const DEFAULT_MODEL_CONFIG: AIModelConfig = DEFAULT_MODEL_CONFIGS[DEFAULT_PROVIDER];

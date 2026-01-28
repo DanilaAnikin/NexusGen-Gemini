@@ -28,7 +28,6 @@ export default (): AppConfig => ({
 
   ai: {
     openaiApiKey: process.env.OPENAI_API_KEY,
-    anthropicApiKey: process.env.ANTHROPIC_API_KEY,
     defaultModel: process.env.AI_MODEL_DEFAULT || 'gpt-4-turbo-preview',
   },
 

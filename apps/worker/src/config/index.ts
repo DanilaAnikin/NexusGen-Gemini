@@ -39,10 +39,6 @@ export const envValidationSchema = {
     required: false,
     type: 'string',
   },
-  ANTHROPIC_API_KEY: {
-    required: false,
-    type: 'string',
-  },
 };
 
 /**

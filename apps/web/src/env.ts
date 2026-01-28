@@ -42,7 +42,6 @@ export const serverEnv = {
 
   // AI services
   OPENAI_API_KEY: getEnvVar("OPENAI_API_KEY", false),
-  ANTHROPIC_API_KEY: getEnvVar("ANTHROPIC_API_KEY", false),
 
   // Redis
   REDIS_URL: getEnvVar("REDIS_URL", false),

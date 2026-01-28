@@ -417,7 +417,7 @@ export class DockerService {
    *
    * @returns Docker system information
    */
-  async getInfo(): Promise<Docker.DockerInfo> {
+  async getInfo(): Promise<any> {
     return this.docker.info();
   }
 

@@ -26,15 +26,13 @@ export class AIOrchestratorService {
   private readonly logger = new Logger(AIOrchestratorService.name);
   private readonly defaultModel: string;
   private readonly openaiApiKey: string | undefined;
-  private readonly anthropicApiKey: string | undefined;
 
   constructor(private readonly configService: ConfigService) {
     this.defaultModel = this.configService.get<string>(
       'AI_MODEL_DEFAULT',
-      'gpt-4-turbo-preview',
+      'gpt-4o',
     );
     this.openaiApiKey = this.configService.get<string>('OPENAI_API_KEY');
-    this.anthropicApiKey = this.configService.get<string>('ANTHROPIC_API_KEY');
   }
 
   /**

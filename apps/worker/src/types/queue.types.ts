@@ -5,12 +5,10 @@
  * and adds any worker-specific extensions.
  */
 
-// Re-export all queue types from the shared types package
-export {
-  // Enums and constants
+// Import QueueName so it is available as a local binding for use in this file
+import {
   QueueName,
   QUEUE_CONFIGS,
-  // Type guards
   isProjectJobData,
   isGenerationJobData,
   isBuildJobData,
@@ -18,6 +16,18 @@ export {
   isAITaskJobData,
   isNotificationJobData,
 } from '@nexusgen/types';
+
+// Re-export all queue types from the shared types package
+export {
+  QueueName,
+  QUEUE_CONFIGS,
+  isProjectJobData,
+  isGenerationJobData,
+  isBuildJobData,
+  isDeployJobData,
+  isAITaskJobData,
+  isNotificationJobData,
+};
 
 export type {
   // Configuration

@@ -3,7 +3,7 @@ import {
   createStorageClientFromEnv,
   getSignedUploadUrl,
   generateUuid,
-} from '@repo/utils';
+} from '@nexusgen/utils';
 
 // ============ Types ============
 

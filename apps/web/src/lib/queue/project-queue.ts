@@ -371,7 +371,6 @@ export async function addBuildJob(
       type: config.backoffType,
       delay: config.backoffDelay,
     },
-    timeout: config.timeout,
     ...options,
   });
 }
@@ -412,7 +411,6 @@ export async function addDeployJob(
       type: config.backoffType,
       delay: config.backoffDelay,
     },
-    timeout: config.timeout,
     ...options,
   });
 }

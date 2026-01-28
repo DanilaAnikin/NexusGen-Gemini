@@ -12,7 +12,7 @@ import GitHub from "next-auth/providers/github";
 import { compare } from "bcryptjs";
 import { prisma } from "@nexusgen/database";
 
-import type { NextAuthConfig } from "next-auth";
+import type { NextAuthConfig, NextAuthResult } from "next-auth";
 
 /**
  * NextAuth.js Configuration
@@ -248,8 +248,17 @@ const authConfig: NextAuthConfig = {
 
 /**
  * Export NextAuth.js handlers and utilities
+ *
+ * We explicitly type each export to avoid TypeScript's "type portability" error
+ * caused by transitive @auth/core types not being directly resolvable in pnpm's
+ * strict node_modules layout.
  */
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
+const nextAuth: NextAuthResult = NextAuth(authConfig);
+
+export const handlers: NextAuthResult["handlers"] = nextAuth.handlers;
+export const auth: NextAuthResult["auth"] = nextAuth.auth;
+export const signIn: NextAuthResult["signIn"] = nextAuth.signIn;
+export const signOut: NextAuthResult["signOut"] = nextAuth.signOut;
 
 /**
  * Export the config for use in middleware

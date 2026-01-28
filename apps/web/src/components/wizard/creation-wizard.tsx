@@ -178,11 +178,6 @@ export function CreationWizard() {
   const { errors, isValid } = formState;
 
   // Navigation helpers
-  const goToStep = useCallback((newStep: number) => {
-    setDirection(newStep > step ? 1 : -1);
-    setStep(newStep);
-  }, [step]);
-
   const goNext = useCallback(async () => {
     if (step === 2) {
       // Validate form fields before proceeding to review

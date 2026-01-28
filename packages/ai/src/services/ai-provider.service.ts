@@ -1,16 +1,16 @@
-import Anthropic from '@anthropic-ai/sdk';
-import type { Message, MessageStream } from '@anthropic-ai/sdk/resources/messages';
+import OpenAI from 'openai';
 
 /**
- * Supported Claude models
+ * Supported OpenAI models
  */
-export type ClaudeModel =
-  | 'claude-3-5-sonnet-latest'
-  | 'claude-3-5-sonnet-20241022'
-  | 'claude-3-opus-latest'
-  | 'claude-3-opus-20240229'
-  | 'claude-3-sonnet-20240229'
-  | 'claude-3-haiku-20240307';
+export type OpenAIModel =
+  | 'gpt-4o'
+  | 'gpt-4o-mini'
+  | 'gpt-4-turbo'
+  | 'gpt-4'
+  | 'gpt-3.5-turbo'
+  | 'o1'
+  | 'o1-mini';
 
 /**
  * Message role types
@@ -58,7 +58,7 @@ export interface AIProviderStreamChunk {
  * Chat request options
  */
 export interface ChatOptions {
-  model?: ClaudeModel;
+  model?: OpenAIModel;
   maxTokens?: number;
   temperature?: number;
   topP?: number;
@@ -81,7 +81,7 @@ export interface RetryConfig {
 export interface AIProviderServiceConfig {
   apiKey?: string;
   retry?: Partial<RetryConfig>;
-  defaultModel?: ClaudeModel;
+  defaultModel?: OpenAIModel;
   defaultMaxTokens?: number;
   timeout?: number;
 }
@@ -136,14 +136,13 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
 };
 
 /**
- * AIProviderService - Robust Anthropic API wrapper with error handling and retry logic
+ * AIProviderService - Robust OpenAI API wrapper with error handling and retry logic
  */
 export class AIProviderService {
-  private readonly client: Anthropic;
+  private readonly client: OpenAI;
   private readonly retryConfig: RetryConfig;
-  private readonly defaultModel: ClaudeModel;
+  private readonly defaultModel: OpenAIModel;
   private readonly defaultMaxTokens: number;
-  private readonly timeout: number;
 
   // Token usage tracking
   private totalInputTokens: number = 0;
@@ -151,16 +150,16 @@ export class AIProviderService {
   private requestCount: number = 0;
 
   constructor(config: AIProviderServiceConfig = {}) {
-    const apiKey = config.apiKey ?? process.env.ANTHROPIC_API_KEY;
+    const apiKey = config.apiKey ?? process.env.OPENAI_API_KEY;
 
     if (!apiKey) {
       throw new AIProviderError(
-        'Anthropic API key is required. Set ANTHROPIC_API_KEY environment variable or pass apiKey in config.',
+        'OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass apiKey in config.',
         AIErrorType.AUTHENTICATION
       );
     }
 
-    this.client = new Anthropic({
+    this.client = new OpenAI({
       apiKey,
       timeout: config.timeout ?? 60000,
     });
@@ -170,9 +169,8 @@ export class AIProviderService {
       ...config.retry,
     };
 
-    this.defaultModel = config.defaultModel ?? 'claude-3-5-sonnet-latest';
+    this.defaultModel = config.defaultModel ?? 'gpt-4o';
     this.defaultMaxTokens = config.defaultMaxTokens ?? 4096;
-    this.timeout = config.timeout ?? 60000;
   }
 
   /**
@@ -187,15 +185,15 @@ export class AIProviderService {
   }
 
   /**
-   * Classify error type from Anthropic API errors
+   * Classify error type from OpenAI API errors
    */
   private classifyError(error: unknown): AIProviderError {
     if (error instanceof AIProviderError) {
       return error;
     }
 
-    // Handle Anthropic SDK errors
-    if (error instanceof Anthropic.APIError) {
+    // Handle OpenAI SDK errors
+    if (error instanceof OpenAI.APIError) {
       const statusCode = error.status;
       const message = error.message;
 
@@ -215,7 +213,7 @@ export class AIProviderService {
         );
       }
 
-      if (statusCode === 400) {
+      if (statusCode === 400 || statusCode === 422) {
         return new AIProviderError(
           `Invalid request: ${message}`,
           AIErrorType.INVALID_REQUEST,
@@ -235,24 +233,6 @@ export class AIProviderService {
         `API error: ${message}`,
         AIErrorType.UNKNOWN,
         { statusCode, retryable: false, originalError: error }
-      );
-    }
-
-    // Handle timeout errors
-    if (error instanceof Anthropic.APIConnectionTimeoutError) {
-      return new AIProviderError(
-        `Request timeout: ${(error as Error).message}`,
-        AIErrorType.TIMEOUT,
-        { retryable: true, originalError: error as Error }
-      );
-    }
-
-    // Handle network/connection errors
-    if (error instanceof Anthropic.APIConnectionError) {
-      return new AIProviderError(
-        `Network error: ${(error as Error).message}`,
-        AIErrorType.NETWORK,
-        { retryable: true, originalError: error as Error }
       );
     }
 
@@ -390,36 +370,49 @@ export class AIProviderService {
     const maxTokens = options.maxTokens ?? this.defaultMaxTokens;
 
     return this.executeWithRetry(async () => {
-      const response: Message = await this.client.messages.create({
+      const requestMessages: OpenAI.ChatCompletionMessageParam[] = [];
+
+      if (options.systemPrompt) {
+        requestMessages.push({
+          role: 'system' as const,
+          content: options.systemPrompt,
+        });
+      }
+
+      requestMessages.push(
+        ...messages.map((msg) => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+        }))
+      );
+
+      const response = await this.client.chat.completions.create({
         model,
+        messages: requestMessages,
         max_tokens: maxTokens,
         temperature: options.temperature,
         top_p: options.topP,
-        system: options.systemPrompt,
-        messages: messages.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        })),
       });
 
       // Extract text content from response
-      const textContent = response.content
-        .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-        .map((block) => block.text)
-        .join('');
+      const content = response.choices[0]?.message?.content ?? '';
 
       const usage: TokenUsage = {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+        inputTokens: response.usage?.prompt_tokens ?? 0,
+        outputTokens: response.usage?.completion_tokens ?? 0,
+        totalTokens:
+          (response.usage?.prompt_tokens ?? 0) +
+          (response.usage?.completion_tokens ?? 0),
       };
 
       this.trackUsage(usage);
 
+      const stopReason = response.choices[0]?.finish_reason ?? 'unknown';
+
       return {
-        content: textContent,
+        content,
         usage,
-        stopReason: response.stop_reason,
+        stopReason,
         model: response.model,
       };
     }, 'chat');
@@ -441,56 +434,75 @@ export class AIProviderService {
 
     while (attempt <= this.retryConfig.maxRetries) {
       try {
-        const stream = await this.client.messages.create({
+        const requestMessages: OpenAI.ChatCompletionMessageParam[] = [];
+
+        if (options.systemPrompt) {
+          requestMessages.push({
+            role: 'system' as const,
+            content: options.systemPrompt,
+          });
+        }
+
+        requestMessages.push(
+          ...messages.map((msg) => ({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+          }))
+        );
+
+        const stream = await this.client.chat.completions.create({
           model,
+          messages: requestMessages,
           max_tokens: maxTokens,
           temperature: options.temperature,
           top_p: options.topP,
-          system: options.systemPrompt,
-          messages: messages.map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
           stream: true,
         });
 
-        let inputTokens = 0;
-        let outputTokens = 0;
-        let stopReason: string | null = null;
+        let fullText = '';
+        let lastFinishReason: string | null = null;
+        let streamInputTokens = 0;
+        let streamOutputTokens = 0;
 
-        for await (const event of stream) {
-          if (event.type === 'message_start') {
-            inputTokens = event.message.usage.input_tokens;
-          } else if (event.type === 'content_block_delta') {
-            if (event.delta.type === 'text_delta') {
-              yield {
-                type: 'text',
-                text: event.delta.text,
-              };
-            }
-          } else if (event.type === 'message_delta') {
-            outputTokens = event.usage.output_tokens;
-            stopReason = event.delta.stop_reason;
-          } else if (event.type === 'message_stop') {
-            const usage: TokenUsage = {
-              inputTokens,
-              outputTokens,
-              totalTokens: inputTokens + outputTokens,
-            };
-
-            this.trackUsage(usage);
-
+        for await (const chunk of stream) {
+          const deltaText = chunk.choices[0]?.delta?.content;
+          if (deltaText) {
+            fullText += deltaText;
             yield {
-              type: 'usage',
-              usage,
-            };
-
-            yield {
-              type: 'end',
-              stopReason,
+              type: 'text',
+              text: deltaText,
             };
           }
+
+          const finishReason = chunk.choices[0]?.finish_reason;
+          if (finishReason) {
+            lastFinishReason = finishReason;
+          }
+
+          // Check for usage data in the chunk (available with stream_options)
+          if (chunk.usage) {
+            streamInputTokens = chunk.usage.prompt_tokens ?? 0;
+            streamOutputTokens = chunk.usage.completion_tokens ?? 0;
+          }
         }
+
+        const usage: TokenUsage = {
+          inputTokens: streamInputTokens,
+          outputTokens: streamOutputTokens,
+          totalTokens: streamInputTokens + streamOutputTokens,
+        };
+
+        this.trackUsage(usage);
+
+        yield {
+          type: 'usage',
+          usage,
+        };
+
+        yield {
+          type: 'end',
+          stopReason: lastFinishReason ?? 'end_turn',
+        };
 
         // Successfully completed, exit the retry loop
         return;
@@ -536,23 +548,24 @@ export class AIProviderService {
   }
 
   /**
-   * Get the underlying Anthropic client for advanced usage
+   * Get the underlying OpenAI client for advanced usage
    */
-  public getClient(): Anthropic {
+  public getClient(): OpenAI {
     return this.client;
   }
 
   /**
    * Check if a model is supported
    */
-  public static isSupportedModel(model: string): model is ClaudeModel {
+  public static isSupportedModel(model: string): model is OpenAIModel {
     const supportedModels: string[] = [
-      'claude-3-5-sonnet-latest',
-      'claude-3-5-sonnet-20241022',
-      'claude-3-opus-latest',
-      'claude-3-opus-20240229',
-      'claude-3-sonnet-20240229',
-      'claude-3-haiku-20240307',
+      'gpt-4o',
+      'gpt-4o-mini',
+      'gpt-4-turbo',
+      'gpt-4',
+      'gpt-3.5-turbo',
+      'o1',
+      'o1-mini',
     ];
     return supportedModels.includes(model);
   }
@@ -560,14 +573,15 @@ export class AIProviderService {
   /**
    * Get list of supported models
    */
-  public static getSupportedModels(): ClaudeModel[] {
+  public static getSupportedModels(): OpenAIModel[] {
     return [
-      'claude-3-5-sonnet-latest',
-      'claude-3-5-sonnet-20241022',
-      'claude-3-opus-latest',
-      'claude-3-opus-20240229',
-      'claude-3-sonnet-20240229',
-      'claude-3-haiku-20240307',
+      'gpt-4o',
+      'gpt-4o-mini',
+      'gpt-4-turbo',
+      'gpt-4',
+      'gpt-3.5-turbo',
+      'o1',
+      'o1-mini',
     ];
   }
 }

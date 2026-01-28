@@ -44,7 +44,7 @@ export interface ArchitectAgentConfig {
  */
 const DEFAULT_CONFIG: Required<ArchitectAgentConfig> = {
   modelConfig: {
-    ...DEFAULT_MODEL_CONFIGS.anthropic,
+    ...DEFAULT_MODEL_CONFIGS.openai,
     temperature: 0.3, // Lower temperature for more consistent structured output
     maxTokens: 8192, // Larger context for comprehensive specs
   },

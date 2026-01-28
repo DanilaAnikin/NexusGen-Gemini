@@ -12,7 +12,6 @@ import {
   Settings,
   Share2
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import LiveLogs from '@/components/terminal/live-logs';
 
 interface Project {

@@ -3,7 +3,7 @@ export {
   AIProviderService,
   AIProviderError,
   AIErrorType,
-  type ClaudeModel,
+  type OpenAIModel,
   type MessageRole,
   type ChatMessage,
   type TokenUsage,

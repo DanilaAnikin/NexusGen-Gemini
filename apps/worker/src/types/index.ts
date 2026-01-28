@@ -246,13 +246,7 @@ export interface QueueJob<T = unknown> {
   failedReason?: string;
 }
 
-export enum QueueName {
-  GENERATION = 'generation',
-  AI_PROCESSING = 'ai-processing',
-  DEPLOYMENT = 'deployment',
-  NOTIFICATION = 'notification',
-  CLEANUP = 'cleanup',
-}
+// QueueName is re-exported from @nexusgen/types via ./queue.types
 
 export interface GenerationJobData {
   generationId: string;

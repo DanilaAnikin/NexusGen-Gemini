@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { QueuesService } from '../queues';
 import {
   GenerationJobData,
   GenerationResult,
@@ -68,9 +69,10 @@ export class GenerationService {
   constructor(
     private readonly configService: ConfigService,
     private readonly eventEmitter: EventEmitter2,
+    @Inject('QUEUE_SERVICE') private readonly queuesService: QueuesService,
   ) {
     // Get AI provider configuration from environment
-    const provider = this.configService.get<string>('AI_PROVIDER', 'anthropic') as 'openai' | 'anthropic' | 'google';
+    const provider = this.configService.get<string>('AI_PROVIDER', 'openai') as 'openai' | 'anthropic' | 'google';
     const model = this.configService.get<string>('AI_MODEL', DEFAULT_MODEL_CONFIGS[provider].model);
     const temperature = this.configService.get<number>('AI_TEMPERATURE', 0.7);
     const maxTokens = this.configService.get<number>('AI_MAX_TOKENS', 8192);
@@ -104,7 +106,7 @@ export class GenerationService {
     });
 
     // Initialize the Docker service for build validation
-    this.dockerService = new DockerService(this.configService);
+    this.dockerService = new DockerService(this.configService, this.queuesService);
 
     this.logger.log(
       `GenerationService initialized with ${provider}/${model}`,

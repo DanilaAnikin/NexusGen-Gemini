@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import { prisma } from '@repo/database';
+import { prisma } from '@nexusgen/database';
 import { requireUserId } from '@/lib/auth';
 import ProjectDashboard from './project-dashboard';
 
@@ -9,12 +9,17 @@ interface PageProps {
 }
 
 async function getProject(id: string, userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+
   const project = await prisma.project.findFirst({
     where: {
       id,
       OR: [
         { userId },
-        { collaborators: { some: { userId } } },
+        ...(user ? [{ collaborators: { some: { email: user.email } } }] : []),
         { visibility: 'PUBLIC' },
       ],
     },
