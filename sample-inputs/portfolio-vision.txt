@@ -1,35 +1,33 @@
-PROJECT: Cyberpunk Personal Portfolio
+Create a Cyberpunk Personal Portfolio website.
 
-VISION:
-Build a stunning, futuristic personal portfolio website with a cyberpunk aesthetic.
-The site should feel like stepping into a neon-lit digital world — think Blade Runner
-meets a hacker's terminal.
+**Visual Style:**
+- **Theme:** Dark, gritty, neon-soaked cyberpunk aesthetic. High contrast.
+- **Colors:** Deep blacks (#050505), neon pink (#ff00ff), cyan (#00ffff), and electric blue.
+- **Typography:** Monospace fonts (like JetBrains Mono or Fira Code) for headers, clean sans-serif for body text. Glitch effects on hover.
 
-HERO SECTION:
-- Full-viewport glitch-effect hero with animated text distortion
-- My name rendered in a monospace font with a flickering CRT scanline overlay
-- Tagline: "Full-Stack Engineer // Digital Architect // Code Artisan"
-- A subtle matrix-style rain of characters falling behind the text
-- Neon accent colors: electric cyan (#00f0ff) and hot magenta (#ff00a8)
-- On hover, the hero text should "glitch" with random offset frames
+**Key Sections:**
+1.  **Hero Section:**
+    - Large, glitching text: "WAKE UP, SAMURAI."
+    - Background: Animated digital rain or a distorted cityscape loop.
+    - CTA Button: "Enter the Matrix" (Neon border, glow effect).
 
-SECTIONS:
-1. About — A terminal-style "boot sequence" that types out my bio on scroll
-2. Projects — Holographic-style cards with a 3D tilt effect on hover, each card
-   showing a project screenshot with a neon border glow
-3. Skills — Circular progress rings with animated fill, styled like a HUD interface
-4. Experience — A vertical timeline with pulsing neon dots and glassmorphism cards
-5. Contact — A form styled as a command-line interface (e.g., "> Enter your name_")
+2.  **About Me:**
+    - "Netrunner Profile" style card.
+    - Skill bars styled as system diagnostics (Load: 98%).
+    - Avatar with a holographic overlay effect.
 
-TECH PREFERENCES:
-- Framework: Next.js 14 with App Router
-- Styling: Tailwind CSS with custom cyberpunk theme
-- Animations: Framer Motion for scroll-triggered reveals
-- Dark mode only (this IS the theme)
-- Fully responsive — mobile must feel like a handheld cyberdeck
+3.  **Projects (The Deck):**
+    - Grid layout representing "Data Shards".
+    - Hovering over a project card reveals details with a CRT monitor scanline effect.
+    - Tags: React, Node, Web3, AI.
 
-EXTRAS:
-- Custom cursor that leaves a neon trail
-- Page transition effects with a "loading data..." screen
-- Easter egg: Konami code triggers a "system hack" animation
-- Sound effects (toggleable) for button clicks and section transitions
+4.  **Contact (Uplink):**
+    - A terminal-style input form.
+    - Placeholder text: "Establish connection..."
+    - Submit button says "Transmit Data".
+
+**Tech Stack Requirements:**
+- Next.js 14+ (App Router)
+- Tailwind CSS
+- Framer Motion for glitch/reveal animations
+- Lucide React for icons

@@ -1,64 +1,22 @@
-# NexusGen Architecture Reference — Test Document
+# NexusGen Architecture Guide (CONFIDENTIAL)
 
-> This is a sample document used to test the NexusGen file upload and parsing pipeline.
+## 1. System Overview
+NexusGen is an autonomous AI-powered web app builder designed to revolutionize how software is created.
 
-## System Overview
+### 1.1 Core Components
+- **Orchestrator:** The brain of the operation, managing agent lifecycles.
+- **Generator:** Handles the LLM interactions and code synthesis.
+- **Builder:** Compiles and processes the generated code.
 
-NexusGen follows a modular monorepo architecture built on the Turborepo build system.
-The platform orchestrates AI agents to transform natural-language project descriptions
-into deployable, production-ready web applications.
+## 2. Data Flow
+1. User provides a prompt.
+2. Architect Agent decomposes the prompt into specifications.
+3. Coder Agent writes the implementation.
+4. Reviewer Agent validates the code against security policies.
 
-## Core Modules
+## 3. Security Protocols
+- All agents operate within sandboxed environments.
+- File system access is strictly scoped.
+- API keys are encrypted at rest.
 
-| Module            | Path                | Purpose                              |
-|-------------------|---------------------|--------------------------------------|
-| Web App           | `apps/web`          | Next.js frontend dashboard           |
-| Worker Service    | `apps/worker`       | NestJS background job processor      |
-| AI Package        | `packages/ai`       | AI provider integrations (OpenAI)    |
-| Database Package  | `packages/database` | Prisma ORM schema and client         |
-| UI Package        | `packages/ui`       | Shared React component library       |
-
-## AI Agent Pipeline
-
-```text
-User Prompt
-    │
-    ▼
-┌──────────────┐
-│  Architect   │ ──► Technical Specification (JSON)
-│    Agent     │
-└──────┬───────┘
-       │
-       ▼
-┌──────────────┐
-│   Coder      │ ──► Generated Source Files
-│    Agent     │
-└──────┬───────┘
-       │
-       ▼
-┌──────────────┐
-│  Validator   │ ──► Docker Build Check + Self-Healing
-│    Agent     │
-└──────────────┘
-```
-
-## Environment Variables
-
-| Variable         | Required | Description                     |
-|------------------|----------|---------------------------------|
-| `DATABASE_URL`   | Yes      | PostgreSQL connection string    |
-| `OPENAI_API_KEY` | Yes      | OpenAI API key for GPT-4o      |
-| `REDIS_URL`      | Yes      | Redis connection for BullMQ     |
-| `JWT_SECRET`     | Yes      | Secret for auth token signing   |
-
-## Testing Checklist
-
-- [ ] Unit tests pass (`pnpm test`)
-- [ ] Type check passes (`pnpm typecheck`)
-- [ ] Full build succeeds (`pnpm build`)
-- [ ] Docker compose starts all services
-- [ ] AI generation produces valid output
-
----
-
-*This document is for testing purposes only.*
+*Note: This is a dummy document for testing file upload capabilities.*
